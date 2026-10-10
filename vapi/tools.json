@@ -1,0 +1,183 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_menu",
+      "description": "Geeft de actuele menukaart en aanbiedingen in het Nederlands terug.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/get-menu",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Een momentje, ik bekijk de menukaart." }]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_promotions",
+      "description": "Geeft de actuele promotietekst van vandaag terug. Gebruik deze tekst als de enige bron voor actuele aanbiedingen.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/get-promotions",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Een ogenblik, ik controleer de acties." }]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "check_availability",
+      "description": "Controleert of een tafel of tijdslot beschikbaar is voor een reservering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "description": "Datum in YYYY-MM-DD-formaat." },
+          "time": { "type": "string", "description": "Tijd in HH:MM-formaat." },
+          "people_count": { "type": "integer", "description": "Aantal personen." }
+        },
+        "required": ["date", "time", "people_count"]
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/check-availability",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Ik kijk meteen of er plek is." }]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "calculate_order",
+      "description": "Berekent de prijs van een bestelling inclusief promotie, bezorgkosten en modifiers.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_type": { "type": "string", "enum": ["pickup", "delivery"] },
+          "delivery_address": { "type": "string", "description": "Vereist bij bezorgen, inclusief postcode." },
+          "promo_code": { "type": "string", "description": "Optionele promotiecode." },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "quantity": { "type": "integer" },
+                "notes": { "type": "string" },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "option_id": { "type": "string" },
+                      "group_id": { "type": "string" },
+                      "name": { "type": "string" }
+                    },
+                    "required": []
+                  }
+                }
+              },
+              "required": ["name", "quantity"]
+            }
+          }
+        },
+        "required": ["order_type", "items"]
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/calculate-order",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Ik bereken het totaal voor u." }]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_order",
+      "description": "Maakt een bestelling aan voor de klant. Alleen na expliciete bevestiging van de samenvatting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": { "type": "string" },
+          "order_type": { "type": "string", "enum": ["pickup", "delivery"] },
+          "delivery_address": { "type": "string" },
+          "promo_code": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "quantity": { "type": "integer" },
+                "notes": { "type": "string" },
+                "modifiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "option_id": { "type": "string" },
+                      "group_id": { "type": "string" },
+                      "name": { "type": "string" }
+                    },
+                    "required": []
+                  }
+                }
+              },
+              "required": ["name", "quantity"]
+            }
+          }
+        },
+        "required": ["customer_phone", "order_type", "items"]
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/create-order",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Ik sla uw bestelling nu op." }]
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_booking",
+      "description": "Slaat een reservering op nadat de beschikbaarheid is gecontroleerd en de beller heeft bevestigd.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "customer_phone": { "type": "string", "description": "Telefoonnummer van de klant." },
+          "customer_name": { "type": "string", "description": "Naam van de klant." },
+          "service": { "type": "string", "description": "Gewenste dienst." },
+          "date": { "type": "string", "description": "Datum in YYYY-MM-DD-formaat." },
+          "time": { "type": "string", "description": "Tijd in HH:MM-formaat." },
+          "people_count": { "type": "integer", "description": "Aantal personen." }
+        },
+        "required": ["customer_phone", "customer_name", "service", "date", "time", "people_count"]
+      }
+    },
+    "server": {
+      "url": "{{N8N_BASE}}/webhook/vapi/create-booking",
+      "headers": { "x-vapi-secret": "{{SECRET}}" }
+    },
+    "messages": [{ "type": "request-start", "content": "Ik bevestig uw reservering." }]
+  },
+  {
+    "type": "transferCall",
+    "destinations": [
+      {
+        "type": "number",
+        "number": "{{TRANSFER_PHONE_NUMBER}}",
+        "description": "Transfer only when the caller explicitly asks to speak with the owner or a staff member and agrees to be transferred.",
+        "message": "Ik verbind u nu door met de eigenaar."
+      }
+    ]
+  }
+]

@@ -1,0 +1,46 @@
+{
+  "name": "{{BUSINESS_NAME}}",
+  "transcriber": {
+    "provider": "deepgram",
+    "model": "nova-2",
+    "language": "nl",
+    "keywords": ["stroopwafel:4", "stroopwafels:4", "poffertjes:4", "bitterballen:4", "kaassouffle:3", "erwtensoep:3", "tomatensoep:3", "appeltaart:3", "uitsmijter:3", "kipsate:3", "pannenkoek:3", "pannenkoeken:3", "kroket:3", "tosti:3", "burger:2", "friet:2", "mayonaise:2", "afhalen:3", "bezorgen:3", "postcode:3"]
+  },
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.3,
+    "messages": [
+      { "role": "system", "content": "{{SYSTEM_PROMPT}}" }
+    ],
+    "toolIds": ["{{TOOL_IDS}}"]
+  },
+  "voice": {
+    "provider": "azure",
+    "voiceId": "nl-NL-FennaNeural",
+    "speed": 1.0
+  },
+  "firstMessage": "Goedendag, u spreekt met de digitale assistent van {{BUSINESS_NAME_SPOKEN}}. Wilt u iets bestellen of een reservering maken?",
+  "firstMessageInterruptionsEnabled": false,
+  "endCallMessage": "Dank u wel voor uw gesprek. Fijne dag en tot ziens.",
+  "maxDurationSeconds": 900,
+  "startSpeakingPlan": {
+    "waitSeconds": 0.4,
+    "smartEndpointingEnabled": false,
+    "transcriptionEndpointingPlan": {
+      "onPunctuationSeconds": 0.1,
+      "onNoPunctuationSeconds": 1.2,
+      "onNumberSeconds": 0.5
+    }
+  },
+  "stopSpeakingPlan": {
+    "numWords": 1,
+    "voiceSeconds": 0.2,
+    "backoffSeconds": 1,
+    "acknowledgementPhrases": ["ja", "jawel", "oké", "ok", "juist", "precies", "hm", "mmm", "aha", "prima", "goed", "begrepen"],
+    "interruptionPhrases": ["stop", "wacht", "wacht even", "nee", "even", "sorry", "maar", "niet", "hou op", "pardon"]
+  },
+  "artifactPlan": {
+    "recordingEnabled": true
+  }
+}

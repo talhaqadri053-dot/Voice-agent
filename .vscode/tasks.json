@@ -1,0 +1,210 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install dashboard dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Update patched dashboard dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Typecheck admin dashboard",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"typecheck"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Pin Supabase client versions",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Build admin dashboard",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"build"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			]
+		},
+		{
+			"label": "Run admin dashboard",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"dev",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3000"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Audit production dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"audit",
+				"--omit=dev"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run admin dashboard on 3001",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"dev",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3001"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run dashboard on 3002",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"dev",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3002"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run dashboard on port 3003",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"dev",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3003"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run live operations dashboard",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"dev",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3004"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Lint admin dashboard",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"lint"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Lint dashboard after env fix",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"lint"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Lint admin dashboard final",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"admin-dashboard",
+				"run",
+				"lint"
+			],
+			"isBackground": false
+		}
+	]
+}

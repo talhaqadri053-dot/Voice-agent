@@ -1,0 +1,5 @@
+.menu-tabs{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:18px 0 12px;padding:0 0 9px;border-bottom:1px solid #e4ebe3}
+.menu-tab{display:inline-flex;align-items:center;justify-content:center;min-height:33px;padding:0 12px;border:1px solid transparent;border-radius:5px;color:#67776d;background:transparent;font-size:10px;font-weight:650;white-space:nowrap;cursor:pointer;transition:color .15s ease,background .15s ease,border-color .15s ease}
+.menu-tab:hover{border-color:#e2e9df;color:#315a43;background:#f7f9f5}
+.menu-tab.active{border-color:#dce8d6;color:#244e38;background:#edf4e8}
+@media(max-width:520px){.menu-tabs{gap:3px}.menu-tab{min-height:31px;padding:0 8px;font-size:9px}}

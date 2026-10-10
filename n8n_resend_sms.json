@@ -1,0 +1,337 @@
+{
+  "name": "Vapi - Resend SMS",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admin/resend-sms",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "d12b1001-0000-4000-8000-000000000101",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Admin Resend Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json;const body=input.body ?? input;const callId=String(body.call_id ?? body.callId ?? body.id ?? '').trim();return [{json:{call_id:callId}}];"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000002",
+      "name": "Normalize Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/calls?id=eq.{{$json.call_id}}&select=id,phone,summary,created_at,sms_status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000004",
+      "name": "Fetch Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=Array.isArray($input.first().json)?$input.first().json:[$input.first().json];const call = rows[0] ?? {};const phone = String(call.phone ?? '').trim();return [{json:{call_id: call.id ?? $('Normalize Request').first().json.call_id, phone, sms_status: call.sms_status ?? 'not_sent'}}];"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000005",
+      "name": "Prepare SMS Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const business=String($('Config').first().json.business_name || 'YOUR_BUSINESS_NAME');const smsBody = `${business}: uw contact is opnieuw verwerkt. Neem contact op met de front desk voor de actuele status.`;return [{json:{phone:$('Prepare SMS Context').first().json.phone,call_id:$('Prepare SMS Context').first().json.call_id,smsBody}}];"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000006",
+      "name": "Build SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.twilio.com/2010-04-01/Accounts/' + $('Config').first().json.twilio_account_sid + '/Messages.json'}}",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{$json.phone}}"
+            },
+            {
+              "name": "From",
+              "value": "={{$('Config').first().json.twilio_from}}"
+            },
+            {
+              "name": "Body",
+              "value": "={{$json.smsBody}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 500
+        },
+        "nodeCredentialType": "twilioApi"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000007",
+      "name": "Send SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1620,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "twilioApi": {
+          "id": "",
+          "name": "Twilio API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/rpc/voice_update_call_sms_status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_call_id: $('Build SMS').first().json.call_id, p_sms_status: 'sent'} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "d12b1001-0000-4000-8000-000000000008",
+      "name": "Mark SMS Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1860,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:true,message:'SMS opnieuw verzonden.'} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "d12b1001-0000-4000-8000-000000000009",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9b148b55-bf53-4559-b51b-151333d1265c",
+              "name": "business_name",
+              "value": "YOUR_BUSINESS_NAME",
+              "type": "string"
+            },
+            {
+              "id": "440c9916-e135-4148-9db1-54d25d588414",
+              "name": "twilio_from",
+              "value": "YOUR_TWILIO_SENDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "358b72b9-b3ad-4f50-9192-74cc371dc618",
+              "name": "twilio_account_sid",
+              "value": "YOUR_TWILIO_ACCOUNT_SID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "decc0c80-50fa-4304-bbae-eea27686392c",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Call": {
+      "main": [
+        [
+          {
+            "node": "Prepare SMS Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SMS Context": {
+      "main": [
+        [
+          {
+            "node": "Build SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SMS": {
+      "main": [
+        [
+          {
+            "node": "Send SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS": {
+      "main": [
+        [
+          {
+            "node": "Mark SMS Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark SMS Sent": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d12b1001-0000-4000-8000-000000000201",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

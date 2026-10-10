@@ -1,0 +1,214 @@
+{
+  "name": "Vapi Tool - create_order",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/create-order",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "a12b1004-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "a12b1004-0000-4000-8000-000000000101",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Vapi Secret v2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json;const body=input.body??{};const message=body.message??{};const list=message.toolCallList??message.toolCalls??body.toolCallList??[];const call=Array.isArray(list)?list[0]:null;let args=call?.parameters??call?.arguments??call?.function?.arguments??body.parameters??{};let parseError=false;if(typeof args==='string'){try{args=JSON.parse(args)}catch{args={};parseError=true}}return [{json:{toolCallId:String(call?.id??call?.toolCallId??body.toolCallId??''),args,parseError,vapiCallId:String(args.call_id||message.call?.id||''),callerNumber:String(message.call?.customer?.number??'')}}];"
+      },
+      "id": "a12b1004-0000-4000-8000-000000000002",
+      "name": "Normalize Vapi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/calls?on_conflict=vapi_call_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Accept", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {vapi_call_id: $('Normalize Vapi').first().json.vapiCallId, phone: $('Normalize Vapi').first().json.callerNumber} }}",
+        "options": { "timeout": 700 },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "a12b1004-0000-4000-8000-000000000007",
+      "name": "Upsert Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/rpc/voice_create_order",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_customer_phone: $('Normalize Vapi').first().json.args.customer_phone || $('Normalize Vapi').first().json.args.phone || $('Normalize Vapi').first().json.callerNumber, p_order_type: $('Normalize Vapi').first().json.args.order_type, p_delivery_address: $('Normalize Vapi').first().json.args.delivery_address ?? null, p_items: $('Normalize Vapi').first().json.args.items, p_call_id: $('Upsert Call').first().json.id ?? null, p_promo_code: $('Normalize Vapi').first().json.args.promo_code ?? null} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "a12b1004-0000-4000-8000-000000000004",
+      "name": "Create Order RPC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data=$input.first().json;const call=$('Normalize Vapi').first().json;const result=data?.error||data?.statusCode>=400?{ok:false,message:'Uw bestelling kon niet worden opgeslagen. Probeert u het zo opnieuw.'}:data;return [{json:{response:{results:[{toolCallId:call.toolCallId,result:JSON.stringify(result)}]}}}];"
+      },
+      "id": "a12b1004-0000-4000-8000-000000000005",
+      "name": "Format Vapi Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json.response}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a12b1004-0000-4000-8000-000000000006",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1380,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Vapi": {
+      "main": [
+        [
+          {
+            "node": "Upsert Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Call": {
+      "main": [
+        [
+          {
+            "node": "Create Order RPC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Order RPC": {
+      "main": [
+        [
+          {
+            "node": "Format Vapi Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Vapi Result": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a12b1004-0000-4000-8000-000000000201",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

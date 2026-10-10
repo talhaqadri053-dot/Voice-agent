@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+.next/
+**/.next/
+dist/
+**/dist/
+
+# local env files
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.local.example
+
+# local Vapi setup artifacts
+/vapi/ids.json
+/vapi/tunnel.log
+/vapi/cloudflared.exe
+*.secret
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

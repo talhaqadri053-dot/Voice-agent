@@ -1,0 +1,553 @@
+{
+  "name": "Vapi - End of Call Report to Supabase and Twilio",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi/end-of-call-report",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000001",
+      "name": "Vapi End-of-Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "b12b1001-0000-4000-8000-000000000101",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Vapi Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first().json;const body=input.body ?? input;const message=body.message ?? body;const artifact=message.artifact ?? body.artifact ?? {};const call=message.call ?? body.call ?? {};const startedAt=call.startedAt ?? call.started_at ?? body.callStartedAt ?? null;const endedAt=call.endedAt ?? call.ended_at ?? body.callEndedAt ?? null;const rawDuration=message.durationSeconds ?? call.durationSeconds ?? body.durationSeconds ?? null;const duration=rawDuration===null||rawDuration===undefined?null:Math.max(0,Math.round(Number(rawDuration)));const transcript=String(artifact.transcript ?? body.transcript ?? '').trim();const transcriptMessages=Array.isArray(artifact.messages)?artifact.messages.map((entry,index)=>({role:String(entry.role ?? entry.speaker ?? '').toLowerCase().includes('assistant')?'assistant':String(entry.role ?? entry.speaker ?? '').toLowerCase().includes('user')?'user':'',text:String(entry.message ?? entry.content ?? entry.text ?? '').trim(),timestamp:entry.timestamp ?? entry.ts ?? null,turn:index + 1})):[];const vapiCallId=String(call.id ?? message.callId ?? body.callId ?? '').trim();const phone=String(call.customer?.number ?? body.call?.customer?.number ?? body.phone ?? '').trim() || null;const recordingUrl=String(message.recordingUrl ?? artifact.recordingUrl ?? body.recordingUrl ?? '').trim() || null;const summary=String(message.analysis?.summary ?? body.summary ?? '').trim();const turnMetrics=Array.isArray(artifact.messages)?artifact.messages.map((entry,index)=>{const metrics=entry.metrics ?? entry.metadata ?? {};const read=(keys)=>{for(const key of keys){const value=metrics[key] ?? entry[key];if(value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value)))return Math.round(Number(value));}return null};const stt=read(['sttLatencyMs','stt_latency_ms','sttLatency','stt_latency']);const llm=read(['llmLatencyMs','llm_latency_ms','llmLatency','llm_latency']);const tts=read(['ttsLatencyMs','tts_latency_ms','ttsLatency','tts_latency']);const total=read(['totalLatencyMs','total_latency_ms','totalLatency','total_latency']);return {turn:index + 1,stt_ms:stt,llm_ms:llm,tts_ms:tts,total_ms:total ?? (stt !== null && llm !== null && tts !== null ? stt + llm + tts : null)};}):[];return [{json:{vapi_call_id:vapiCallId,phone:phone,transcript:transcript,transcript_messages:transcriptMessages,recording_url:recordingUrl,summary:summary,duration_seconds:duration,call_started_at:startedAt,call_ended_at:endedAt,turn_metrics:turnMetrics}}];"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000002",
+      "name": "Extract Report Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/rpc/voice_save_end_call_report",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_vapi_call_id: $json.vapi_call_id, p_phone: $json.phone, p_transcript: $json.transcript, p_summary: $json.summary, p_duration_seconds: $json.duration_seconds, p_call_started_at: $json.call_started_at, p_call_ended_at: $json.call_ended_at, p_recording_url: $json.recording_url, p_transcript_messages: $json.transcript_messages, p_turn_metrics: $json.turn_metrics} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000004",
+      "name": "Save Call and Link Transactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.recording_url}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b12b1001-0000-4000-8000-000000000005",
+      "name": "Has Recording?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$json.recording_url}}",
+        "responseFormat": "string",
+        "options": {
+          "timeout": 700,
+          "encoding": "binary"
+        }
+      },
+      "id": "b12b1001-0000-4000-8000-000000000006",
+      "name": "Download Recording",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        120
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/storage/v1/object/call-recordings/calls/{{$json.vapi_call_id}}.{{ $json.recording_extension || 'webm' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{$json.content_type || 'audio/webm'}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {file: $binary.data} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000007",
+      "name": "Upload Recording to Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/rpc/voice_update_call_recording",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_call_id: $json.call_id, p_recording_url: 'call-recordings/calls/' + $json.vapi_call_id + '.' + ($json.recording_extension || 'webm')} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000008",
+      "name": "Persist Storage Path",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$input.first().json;if(d?.error||d?.statusCode>=400)return [{json:{saveFailed:true}}];if(d?.ok!==true)return [{json:{saveFailed:true}}];const items=Array.isArray(d.order?.items)?d.order.items.map(x=>`${x.quantity}x ${x.name}`).join(', '):'';const business=String($('Config').first().json.business_name || 'YOUR_BUSINESS_NAME').trim() || 'YOUR_BUSINESS_NAME';let body='';if(d.order){body=`${business}: ${items || 'Bestelling ontvangen'}. Totaal EUR ${Number(d.order.total??0).toFixed(2).replace('.', ',')}. ${d.order.order_type==='delivery'?'Bezorgen':'Afhalen'} ca. ${d.order.eta_minutes ?? '?'} min.`;} else if(d.booking){body=`${business}: Reservering ${d.booking.service ?? ''} ${String(d.booking.date ?? '').slice(0,10)} ${String(d.booking.time ?? '').slice(0,5)} ${d.booking.people_count ?? ''} pers.`;} return [{json:{call_id:d.call_id,phone:d.phone,sms_status:d.sms_status,shouldSend:!!(d.order||d.booking)&&d.sms_status!=='sent'&&!d.duplicate&&!!d.phone,smsBody:body.slice(0,160),twilioFrom:$('Config').first().json.twilio_from || 'YOUR_TWILIO_SENDER_ID',saveFailed:false}}];"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000009",
+      "name": "Prepare Dutch SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.shouldSend}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b12b1001-0000-4000-8000-000000000010",
+      "name": "SMS Required?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2340,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.twilio.com/2010-04-01/Accounts/' + $('Config').first().json.twilio_account_sid + '/Messages.json'}}",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{$json.phone}}"
+            },
+            {
+              "name": "From",
+              "value": "={{$('Config').first().json.twilio_from}}"
+            },
+            {
+              "name": "Body",
+              "value": "={{$json.smsBody}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 500
+        },
+        "nodeCredentialType": "twilioApi"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000011",
+      "name": "Send SMS via Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2560,
+        120
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 250,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "twilioApi": {
+          "id": "",
+          "name": "Twilio API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cduzhllgktghjvihgrmx.supabase.co/rest/v1/rpc/voice_update_call_sms_status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_call_id: $('Prepare Dutch SMS').first().json.call_id, p_sms_status: 'sent'} }}",
+        "options": {
+          "timeout": 700
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi"
+      },
+      "id": "b12b1001-0000-4000-8000-000000000012",
+      "name": "Mark SMS Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2800,
+        40
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "",
+          "name": "Supabase service role"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:true} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b12b1001-0000-4000-8000-000000000013",
+      "name": "Acknowledge Report",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3040,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "425ba036-57da-4a1b-af62-6455e97eea87",
+              "name": "business_name",
+              "value": "YOUR_BUSINESS_NAME",
+              "type": "string"
+            },
+            {
+              "id": "78afa927-050e-4c25-a46a-d87bd306f417",
+              "name": "twilio_from",
+              "value": "YOUR_TWILIO_SENDER_ID",
+              "type": "string"
+            },
+            {
+              "id": "d2272a65-e3eb-47fa-8d5a-5573dbb63a13",
+              "name": "twilio_account_sid",
+              "value": "YOUR_TWILIO_ACCOUNT_SID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "835abe1d-81c9-4b1d-bf34-17a8d671133d",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Vapi End-of-Call Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Report Fields": {
+      "main": [
+        [
+          {
+            "node": "Save Call and Link Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Call and Link Transactions": {
+      "main": [
+        [
+          {
+            "node": "Has Recording?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Recording?": {
+      "main": [
+        [
+          {
+            "node": "Download Recording",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Dutch SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Recording": {
+      "main": [
+        [
+          {
+            "node": "Upload Recording to Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Recording to Storage": {
+      "main": [
+        [
+          {
+            "node": "Persist Storage Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Storage Path": {
+      "main": [
+        [
+          {
+            "node": "Prepare Dutch SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Dutch SMS": {
+      "main": [
+        [
+          {
+            "node": "SMS Required?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS Required?": {
+      "main": [
+        [
+          {
+            "node": "Send SMS via Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Acknowledge Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS via Twilio": {
+      "main": [
+        [
+          {
+            "node": "Mark SMS Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark SMS Sent": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Extract Report Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b12b1001-0000-4000-8000-000000000201",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
